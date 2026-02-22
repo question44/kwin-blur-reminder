@@ -61,11 +61,12 @@ run_as_user /usr/bin/notify-send -u normal "KWin Updated" "$msg" \
 # The trailing `read` keeps the window open after the command finishes.
 term_cmd="paru -S $pkg; echo; read -rp 'Press Enter to close...'"
 
-for term in kitty alacritty foot konsole xterm; do
+for term in ghostty kitty alacritty foot konsole xterm; do
   term_path="$(command -v "$term" 2>/dev/null || true)"
   [[ -x "$term_path" ]] || continue
 
   case "$term" in
+    ghostty)  run_as_user ghostty -e bash -c "$term_cmd" >/dev/null 2>&1 & ;;
     kitty)    run_as_user kitty -- bash -c "$term_cmd" >/dev/null 2>&1 & ;;
     alacritty) run_as_user alacritty -e bash -c "$term_cmd" >/dev/null 2>&1 & ;;
     foot)     run_as_user foot bash -c "$term_cmd" >/dev/null 2>&1 & ;;
