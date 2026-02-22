@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-msg="KWin updated. Rebuild blur effect: paru -S kwin-effects-better-blur-dx-git"
+pkg="kwin-effects-better-blur-dx-git"
+msg="KWin updated. Rebuild blur effect: paru -S $pkg"
 echo "⚠️  $msg"
 
 # Prefer the sudo invoker (common case)
@@ -30,8 +31,46 @@ uid="$(id -u "$user")"
 bus="/run/user/$uid/bus"
 [[ -S "$bus" ]] || exit 0
 
-sudo -u "$user" /usr/bin/env \
-  XDG_RUNTIME_DIR="/run/user/$uid" \
-  DBUS_SESSION_BUS_ADDRESS="unix:path=$bus" \
-  /usr/bin/notify-send -u normal "KWin Updated" "$msg" \
+# Detect display env vars from user's running processes
+wayland_display=""
+x_display=""
+for pid in $(pgrep -u "$user" 2>/dev/null); do
+  [[ -r "/proc/$pid/environ" ]] || continue
+  env_vars="$(tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null)"
+  [[ -z "$wayland_display" ]] && wayland_display="$(grep '^WAYLAND_DISPLAY=' <<< "$env_vars" | head -1 | cut -d= -f2 || true)"
+  [[ -z "$x_display" ]]      && x_display="$(grep '^DISPLAY=' <<< "$env_vars" | head -1 | cut -d= -f2 || true)"
+  [[ -n "$wayland_display" || -n "$x_display" ]] && break
+done
+wayland_display="${wayland_display:-wayland-0}"
+x_display="${x_display:-:0}"
+
+run_as_user() {
+  sudo -u "$user" /usr/bin/env \
+    XDG_RUNTIME_DIR="/run/user/$uid" \
+    DBUS_SESSION_BUS_ADDRESS="unix:path=$bus" \
+    WAYLAND_DISPLAY="$wayland_display" \
+    DISPLAY="$x_display" \
+    "$@"
+}
+
+# Send desktop notification
+run_as_user /usr/bin/notify-send -u normal "KWin Updated" "$msg" \
   >/dev/null 2>&1 || true
+
+# Open a terminal running paru to rebuild the package.
+# The trailing `read` keeps the window open after the command finishes.
+term_cmd="paru -S $pkg; echo; read -rp 'Press Enter to close...'"
+
+for term in kitty alacritty foot konsole xterm; do
+  term_path="$(command -v "$term" 2>/dev/null || true)"
+  [[ -x "$term_path" ]] || continue
+
+  case "$term" in
+    kitty)    run_as_user kitty -- bash -c "$term_cmd" >/dev/null 2>&1 & ;;
+    alacritty) run_as_user alacritty -e bash -c "$term_cmd" >/dev/null 2>&1 & ;;
+    foot)     run_as_user foot bash -c "$term_cmd" >/dev/null 2>&1 & ;;
+    konsole)  run_as_user konsole --noclose -e bash -c "$term_cmd" >/dev/null 2>&1 & ;;
+    xterm)    run_as_user xterm -e bash -c "$term_cmd" >/dev/null 2>&1 & ;;
+  esac
+  break
+done
