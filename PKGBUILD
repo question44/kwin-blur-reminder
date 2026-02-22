@@ -1,5 +1,5 @@
 pkgname=kwin-blur-reminder
-pkgver=1.1.1
+pkgver=1.1.2
 pkgrel=1
 pkgdesc="Pacman hook + desktop notification reminding to rebuild KWin blur effect after KWin updates"
 arch=('any')

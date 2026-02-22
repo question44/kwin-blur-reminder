@@ -2,7 +2,17 @@
 set -euo pipefail
 
 pkg="kwin-effects-better-blur-dx-git"
-msg="KWin updated. Rebuild blur effect: paru -S $pkg"
+
+aur_helper=""
+for helper in paru yay trizen pikaur; do
+  if command -v "$helper" &>/dev/null; then
+    aur_helper="$helper"
+    break
+  fi
+done
+aur_helper="${aur_helper:-paru}"
+
+msg="KWin updated. Rebuild blur effect: $aur_helper -S $pkg"
 echo "⚠️  $msg"
 
 # Prefer the sudo invoker (common case)
@@ -59,7 +69,7 @@ run_as_user /usr/bin/notify-send -u normal "KWin Updated" "$msg" \
 
 # Open a terminal running paru to rebuild the package.
 # The trailing `read` keeps the window open after the command finishes.
-term_cmd="paru -S $pkg; echo; read -rp 'Press Enter to close...'"
+term_cmd="$aur_helper -S $pkg; echo; read -rp 'Press Enter to close...'"
 
 for term in ghostty kitty alacritty foot konsole xterm; do
   term_path="$(command -v "$term" 2>/dev/null || true)"
