@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Install dependencies
-        run: pacman -Syu --noconfirm base-devel libnotify
+        run: pacman -Syu --noconfirm base-devel
 
       - uses: actions/checkout@v4
 
@@ -24,7 +24,7 @@ jobs:
           chown -R builder:builder .
 
       - name: Build package
-        run: su builder -c "makepkg --noconfirm"
+        run: su builder -c "makepkg --nodeps --noconfirm"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
