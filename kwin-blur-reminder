@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+msg="KWin updated. Rebuild blur effect: paru -S kwin-effects-better-blur-dx-git"
+echo "⚠️  $msg"
+
+# Prefer the sudo invoker (common case)
+user="${SUDO_USER:-}"
+
+# Fallback: active graphical session user
+if [[ -z "$user" ]]; then
+  user="$(
+    loginctl list-sessions --no-legend 2>/dev/null \
+    | awk '{print $1}' \
+    | while read -r sid; do
+        active=$(loginctl show-session "$sid" -p Active --value 2>/dev/null)
+        type=$(loginctl show-session "$sid" -p Type --value 2>/dev/null)
+        name=$(loginctl show-session "$sid" -p Name --value 2>/dev/null)
+        if [[ "$active" == "yes" && ( "$type" == "wayland" || "$type" == "x11" ) ]]; then
+          echo "$name"
+          break
+        fi
+      done
+  )"
+fi
+
+[[ -n "$user" ]] || exit 0
+uid="$(id -u "$user")"
+
+bus="/run/user/$uid/bus"
+[[ -S "$bus" ]] || exit 0
+
+sudo -u "$user" /usr/bin/env \
+  XDG_RUNTIME_DIR="/run/user/$uid" \
+  DBUS_SESSION_BUS_ADDRESS="unix:path=$bus" \
+  /usr/bin/notify-send -u normal "KWin Updated" "$msg" \
+  >/dev/null 2>&1 || true

@@ -1,0 +1,11 @@
+[Trigger]
+Operation = Upgrade
+Type = Package
+Target = kwin
+Target = kwin-wayland
+Target = kwin-x11
+
+[Action]
+Description = KWin updated – blur effect may need rebuild
+When = PostTransaction
+Exec = /usr/bin/kwin-blur-reminder
